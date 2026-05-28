@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión de Precios - Meli</title>
+    <!-- Librería embebida para procesar archivos nativos de Excel (.xlsx) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --ml-yellow: #FFF159;
+            --ml-blue: #3483FA;
+            --ml-dark: #333333;
+            --ml-gray: #EEEEEE;
+            --ml-green: #00A650;
+            --ml-red: #F23D4F;
+            --text-muted: #666666;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: #F5F5F5;
+            color: var(--ml-dark);
+            padding: 20px;
+        }
+
+        header {
+            background-color: var(--ml-yellow);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 1.4rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            background: #E0E0E0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--ml-blue);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 950px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            height: fit-content;
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--ml-gray);
+            padding-bottom: 8px;
+            color: var(--ml-blue);
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        input[type="number"], input[type="text"], select, input[type="file"] {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #CCCCCC;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        input[type="number"]:focus, input[type="text"]:focus, select:focus {
+            border-color: var(--ml-blue);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .btn-blue { background: var(--ml-blue); color: white; }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .data-table th {
+            background-color: #fcfcfc;
+            text-align: left;
+            padding: 12px;
+            font-weight: bold;
+            border-bottom: 2px solid var(--ml-gray);
+            color: #555;
+        }
+
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--ml-gray);
+            vertical-align: middle;
+        }
+
+        .price-badge {
+            font-size: 1.15rem;
+            font-weight: bold;
+            color: var(--ml-blue);
+            background: #EAF2FF;
+            padding: 6px 10px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .text-green { color: var(--ml-green); font-weight: bold; }
+        .text-red { color: var(--ml-red); font-weight: bold; }
+        .text-muted { color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 2px;}
+
+        .action-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: bold;
+            margin-right: 4px;
+        }
+        .btn-edit { background: #EAF2FF; color: var(--ml-blue); }
+        .btn-delete { background: #FCE8E6; color: var(--ml-red); }
+
+        .roi-box {
+            background: #E6F7ED;
+            border: 1px solid var(--ml-green);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .import-box {
+            background: #E8F5E9;
+            border: 1px dashed var(--ml-green);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Sistema de Gestión de Costos y Precios Inversos</h1>
+        <span style="font-weight: bold; font-size: 0.9rem;">🇦🇷 Panel RI</span>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('simulador')">🎯 Simulador de ROI</button>
+        <button class="tab-btn" onclick="switchTab('productos')">📦 Catálogo de Productos</button>
+        <button class="tab-btn" onclick="switchTab('config')">⚙️ Configuración Sistema</button>
+    </div>
+
+    <!-- PESTAÑA 1: SIMULADOR -->
+    <div id="tab-simulador" class="tab-content active">
+        <div class="grid-layout">
+            <div class="card">
+                <h2>Selección de Estrategia</h2>
+                <div class="form-group">
+                    <label for="simProductoSelect">Seleccionar Producto / SKU</label>
+                    <select id="simProductoSelect" onchange="calcularSimulacion()"></select>
+                </div>
+                <div class="roi-box">
+                    <label for="simRoi" style="color: var(--ml-green); font-size: 0.95rem;"><strong>Definí tu ROI Objetivo (%)</strong></label>
+                    <input type="number" id="simRoi" value="100" min="0" step="0.1" style="border: 2px solid var(--ml-green); font-size: 1.2rem; font-weight: bold; text-align: center;" oninput="calcularSimulacion()">
+                </div>
+                <div id="resumenCostosProducto" style="font-size: 0.85rem; color: #555; line-height: 1.4;"></div>
+            </div>
+            <div class="card">
+                <h2>Precios de Venta Sugeridos para Mercado Libre</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Opción de Financiación</th>
+                            <th>Precio a Publicar</th>
+                            <th>Cargos ML (Comisión + Cuotas)</th>
+                            <th>Envío / Logística</th>
+                            <th>Impuestos Netos s/Venta</th>
+                            <th>Ganancia de Bolsillo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodySimulacion"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 2: CATÁLOGO E IMPORTADOR EXCEL -->
+    <div id="tab-productos" class="tab-content">
+        <div class="grid-layout">
+            <div>
+                <!-- MÓDULO DE EXCEL DIRECTO -->
+                <div class="card import-box">
+                    <h2 style="color: var(--ml-green); border-bottom: 2px solid #C8E6C9;">🟢 Importador Masivo de Excel</h2>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label style="color: #333;">Seleccionar tu archivo <strong>lista-sku.xlsx</strong></label>
+                        <input type="file" id="excelFileInput" accept=".xlsx, .xls" onchange="importarExcel(this)">
+                        <span class="text-muted" style="color: #444; font-size: 0.75rem; margin-top: 6px;">
+                            Subí el archivo directo. El sistema limpia formatos de moneda ($) e interpreta comisiones decimales automáticamente.
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 id="formTitle">Cargar / Editar Individual</h2>
+                    <form id="productoForm" onsubmit="guardarProducto(event)">
+                        <input type="hidden" id="prodId" value="">
+                        <div class="form-group">
+                            <label for="prodSku">SKU / Nombre del Producto</label>
+                            <input type="text" id="prodSku" required placeholder="ej: stmini-case-grey">
+                        </div>
+                        <div class="form-group">
+                            <label for="prodNeto">Costo Neto de Compra ($)</label>
+                            <input type="number" id="prodNeto" step="0.01" required value="0">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="prodIva">Crédito IVA Compra ($)</label>
+                                <input type="number" id="prodIva" step="0.01" required value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="prodIibb">Crédito IIBB Compra ($)</label>
+                                <input type="number" id="prodIibb" step="0.01" required value="0">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="prodIigg">Percepción IIGG ($)</label>
+                                <input type="number" id="prodIigg" step="0.01" required value="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="prodPackaging">Embalaje / Despacho ($)</label>
+                                <input type="number" id="prodPackaging" step="0.01" required value="0">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="prodComision">Comisión ML Base (%)</label>
+                                <input type="number" id="prodComision" step="0.1" required value="16">
+                            </div>
+                            <div class="form-group">
+                                <label for="prodCostoFijo">Costo Fijo Unidad ($)</label>
+                                <input type="number" id="prodCostoFijo" step="0.01" required value="1100">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="prodEnvio">Costo Envío FULL ($)</label>
+                            <input type="number" id="prodEnvio" step="0.01" required value="0">
+                        </div>
+                        <button type="submit" id="btnSubmitForm" class="btn btn-blue" style="margin-top: 10px;">Guardar Producto</button>
+                        <button type="button" id="btnCancelarEdicion" class="btn" style="margin-top: 5px; background: #DDD; color: #333; display: none;" onclick="cancelarEdicion()">Cancelar</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Productos en Catálogo</h2>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Costo Neto</th>
+                            <th>Comisión</th>
+                            <th>Costo Fijo</th>
+                            <th>Envío Full</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyProductos"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 3: CONFIGURACIÓN -->
+    <div id="tab-config" class="tab-content">
+        <div class="grid-layout">
+            <div class="card">
+                <h2>Impuestos Base y Topes (Venta)</h2>
+                <div class="form-group">
+                    <label for="cfgIva">Alícuota IVA Venta (%)</label>
+                    <input type="number" id="cfgIva" step="0.1" value="21" oninput="guardarConfig()">
+                </div>
+                <div class="form-group">
+                    <label for="cfgIibb">Alícuota IIBB Venta (%)</label>
+                    <input type="number" id="cfgIibb" step="0.1" value="4" oninput="guardarConfig()">
+                </div>
+                <div class="form-group">
+                    <label for="cfgLimite">Límite Unificado Envío/Costo Fijo ($)</label>
+                    <input type="number" id="cfgLimite" step="0.01" value="33000" oninput="guardarConfig()">
+                </div>
+            </div>
+            <div class="card">
+                <h2>Tasas Financieras de Cuotas (Mercado Libre)</h2>
+                <div class="form-group"><label>Sin Cuotas Extra (%)</label><input type="number" id="tasa0" step="0.1" value="0" oninput="guardarConfig()"></div>
+                <div class="form-group"><label>3 Cuotas "Sin Interés" (%)</label><input type="number" id="tasa3" step="0.1" value="8.4" oninput="guardarConfig()"></div>
+                <div class="form-group"><label>6 Cuotas "Sin Interés" (%)</label><input type="number" id="tasa6" step="0.1" value="12.3" oninput="guardarConfig()"></div>
+                <div class="form-group"><label>9 Cuotas "Sin Interés" (%)</label><input type="number" id="tasa9" step="0.1" value="15.7" oninput="guardarConfig()"></div>
+                <div class="form-group"><label>12 Cuotas "Sin Interés" (%)</label><input type="number" id="tasa12" step="0.1" value="19.2" oninput="guardarConfig()"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        if (!localStorage.getItem('meli_config')) {
+            const configDefecto = { iva: 21, iibb: 4, limite: 33000, t0: 0, t3: 8.4, t6: 12.3, t9: 15.7, t12: 19.2 };
+            localStorage.setItem('meli_config', JSON.stringify(configDefecto));
+        }
+        if (!localStorage.getItem('meli_productos')) {
+            localStorage.setItem('meli_productos', JSON.stringify([]));
+        }
+
+        // FUNCIÓN GLOBAL DE FORMATEO ARGENTINO: 1.820,22
+        function formataARS(valor) {
+            return valor.toLocaleString('es-AR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+            cargarDatos();
+        }
+
+        function cargarDatos() {
+            const cfg = JSON.parse(localStorage.getItem('meli_config'));
+            document.getElementById('cfgIva').value = cfg.iva;
+            document.getElementById('cfgIibb').value = cfg.iibb;
+            document.getElementById('cfgLimite').value = cfg.limite;
+            document.getElementById('tasa0').value = cfg.t0;
+            document.getElementById('tasa3').value = cfg.t3;
+            document.getElementById('tasa6').value = cfg.t6;
+            document.getElementById('tasa9').value = cfg.t9;
+            document.getElementById('tasa12').value = cfg.t12;
+
+            const prods = JSON.parse(localStorage.getItem('meli_productos'));
+            
+            const tbodyP = document.getElementById('tbodyProductos');
+            tbodyP.innerHTML = '';
+            prods.forEach(p => {
+                tbodyP.innerHTML += `<tr>
+                    <td><strong>${p.sku}</strong></td>
+                    <td>$ ${formataARS(p.neto)}</td>
+                    <td>${p.comision.toLocaleString('es-AR')}%</td>
+                    <td>$ ${formataARS(p.costoFijo)}</td>
+                    <td>$ ${formataARS(p.envio)}</td>
+                    <td>
+                        <button class="action-btn btn-edit" onclick="prepararEdicion('${p.id}')">Editar</button>
+                        <button class="action-btn btn-delete" onclick="eliminarProducto('${p.id}')">Eliminar</button>
+                    </td>
+                </tr>`;
+            });
+
+            const selectS = document.getElementById('simProductoSelect');
+            const valAnterior = selectS.value;
+            selectS.innerHTML = '';
+            prods.forEach(p => {
+                selectS.innerHTML += `<option value="${p.id}">${p.sku}</option>`;
+            });
+            if(valAnterior && selectS.querySelector(`option[value="${valAnterior}"]`)) {
+                selectS.value = valAnterior;
+            } else if (prods.length > 0) {
+                selectS.value = prods[0].id;
+            }
+            calcularSimulacion();
+        }
+
+        function importarExcel(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const filas = XLSX.utils.sheet_to_json(worksheet);
+                const nuevosProductos = [];
+
+                filas.forEach((fila, index) => {
+                    // LIMPIADOR ULTRA AGRESIVO: Remueve $ y separa miles correctamente independientemente de la región
+                    const limpiarNum = (val) => {
+                        if (val === undefined || val === null) return 0;
+                        if (typeof val === 'number') return val;
+                        
+                        let str = val.toString().replace(/[\$\s%]/g, '');
+                        
+                        if (str.includes(',') && str.includes('.')) {
+                            if (str.indexOf(',') < str.indexOf('.')) {
+                                str = str.replace(/,/g, ''); // Formato US
+                            } else {
+                                str = str.replace(/\./g, '').replace(',', '.'); // Formato AR
+                            }
+                        } else {
+                            str = str.replace(',', '.');
+                        }
+                        return parseFloat(str) || 0;
+                    };
+
+                    let rawComision = limpiarNum(fila['comisión']);
+                    let comisionPorcentaje = rawComision <= 1 ? rawComision * 100 : rawComision;
+
+                    if (fila['sku']) {
+                        nuevosProductos.push({
+                            id: (Date.now() + index).toString(),
+                            sku: fila['sku'].toString().trim(),
+                            neto: limpiarNum(fila['neto']),
+                            iva: limpiarNum(fila['iva']),
+                            iibb: limpiarNum(fila['iibb']),
+                            iigg: limpiarNum(fila['iigg']),
+                            costoFijo: limpiarNum(fila['costo fijo']),
+                            comision: parseFloat(comisionPorcentaje.toFixed(1)),
+                            packaging: limpiarNum(fila['embalaje']),
+                            envio: limpiarNum(fila['envio'])
+                        });
+                    }
+                });
+
+                if (nuevosProductos.length > 0) {
+                    localStorage.setItem('meli_productos', JSON.stringify(nuevosProductos));
+                    alert(`¡Éxito! Se cargaron y guardaron ${nuevosProductos.length} productos en tu catálogo.`);
+                    cargarDatos();
+                } else {
+                    alert('Error: No se encontraron filas válidas en el Excel.');
+                }
+                input.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function guardarConfig() {
+            const config = {
+                iva: parseFloat(document.getElementById('cfgIva').value) || 0,
+                iibb: parseFloat(document.getElementById('cfgIibb').value) || 0,
+                limite: parseFloat(document.getElementById('cfgLimite').value) || 0,
+                t0: parseFloat(document.getElementById('tasa0').value) || 0,
+                t3: parseFloat(document.getElementById('tasa3').value) || 0,
+                t6: parseFloat(document.getElementById('tasa6').value) || 0,
+                t9: parseFloat(document.getElementById('tasa9').value) || 0,
+                t12: parseFloat(document.getElementById('tasa12').value) || 0
+            };
+            localStorage.setItem('meli_config', JSON.stringify(config));
+            calcularSimulacion();
+        }
+
+        function prepararEdicion(id) {
+            const prods = JSON.parse(localStorage.getItem('meli_productos'));
+            const p = prods.find(prod => prod.id === id);
+            
+            if(p) {
+                document.getElementById('prodId').value = p.id;
+                document.getElementById('prodSku').value = p.sku;
+                document.getElementById('prodNeto').value = p.neto;
+                document.getElementById('prodIva').value = p.iva;
+                document.getElementById('prodIibb').value = p.iibb;
+                document.getElementById('prodIigg').value = p.iigg;
+                document.getElementById('prodPackaging').value = p.packaging;
+                document.getElementById('prodComision').value = p.comision;
+                document.getElementById('prodCostoFijo').value = p.costoFijo;
+                document.getElementById('prodEnvio').value = p.envio;
+
+                document.getElementById('formTitle').innerText = "Editar Producto / SKU";
+                document.getElementById('formMode').innerText = "Modo: Editando " + p.sku;
+                document.getElementById('formMode').style.display = "inline-block";
+                document.getElementById('btnSubmitForm').innerText = "Guardar Cambios";
+                document.getElementById('btnCancelarEdicion').style.display = "block";
+            }
+        }
+
+        function cancelarEdicion() {
+            document.getElementById('prodId').value = "";
+            document.getElementById('productoForm').reset();
+            document.getElementById('formTitle').innerText = "Cargar Nuevo Producto";
+            document.getElementById('formMode').style.display = "none";
+            document.getElementById('btnSubmitForm').innerText = "Guardar Producto";
+            document.getElementById('btnCancelarEdicion').style.display = "none";
+        }
+
+        function guardarProducto(e) {
+            e.preventDefault();
+            const prods = JSON.parse(localStorage.getItem('meli_productos'));
+            const idExistente = document.getElementById('prodId').value;
+
+            const datosProducto = {
+                sku: document.getElementById('prodSku').value,
+                neto: parseFloat(document.getElementById('prodNeto').value) || 0,
+                iva: parseFloat(document.getElementById('prodIva').value) || 0,
+                iibb: parseFloat(document.getElementById('prodIibb').value) || 0,
+                iigg: parseFloat(document.getElementById('prodIigg').value) || 0,
+                packaging: parseFloat(document.getElementById('prodPackaging').value) || 0,
+                comision: parseFloat(document.getElementById('prodComision').value) || 0,
+                costoFijo: parseFloat(document.getElementById('prodCostoFijo').value) || 0,
+                envio: parseFloat(document.getElementById('prodEnvio').value) || 0
+            };
+
+            if (idExistente && idExistente !== "") {
+                const index = prods.findIndex(p => p.id === idExistente);
+                if (index !== -1) prods[index] = { id: idExistente, ...datosProducto };
+            } else {
+                prods.push({ id: Date.now().toString(), ...datosProducto });
+            }
+
+            localStorage.setItem('meli_productos', JSON.stringify(prods));
+            cancelarEdicion();
+            cargarDatos();
+        }
+
+        function eliminarProducto(id) {
+            if(confirm('¿Seguro querés eliminar este producto?')) {
+                let prods = JSON.parse(localStorage.getItem('meli_productos'));
+                prods = prods.filter(p => p.id !== id);
+                localStorage.setItem('meli_productos', JSON.stringify(prods));
+                if(document.getElementById('prodId').value === id) cancelarEdicion();
+                cargarDatos();
+            }
+        }
+
+        function calcularPrecioInverso(totalErogacion, gananciaLimpia, porcMeli, porcCuota, tIva, tIibb, costoEnvio, limite, costoFijoIndividual) {
+            let comision = porcMeli / 100;
+            let cuota = porcCuota / 100;
+            
+            let numConEnvio = totalErogacion + gananciaLimpia + costoEnvio * (1 - (tIva / (1 + tIva)));
+            let denConEnvio = 1 - tIibb - (tIva / (1 + tIva)) - comision * (1 - (tIva / (1 + tIva))) - cuota * (1 - (tIva / (1 + tIva)));
+            let precio = numConEnvio / denConEnvio;
+
+            if (precio >= limite) {
+                return { precio: precio, tieneEnvio: true, fijo: 0 };
+            }
+
+            let numConFijo = totalErogacion + gananciaLimpia + costoFijoIndividual * (1 - (tIva / (1 + tIva)));
+            let denConFijo = 1 - tIibb - (tIva / (1 + tIva)) - comision * (1 - (tIva / (1 + tIva))) - cuota * (1 - (tIva / (1 + tIva)));
+            precio = numConFijo / denConFijo;
+
+            if (precio < limite) {
+                return { precio: precio, tieneEnvio: false, fijo: costoFijoIndividual };
+            }
+
+            return { precio: limite, tieneEnvio: true, fijo: 0 };
+        }
+
+        function calcularSimulacion() {
+            const selectS = document.getElementById('simProductoSelect');
+            if(!selectS.value) return;
+
+            const prods = JSON.parse(localStorage.getItem('meli_productos'));
+            const p = prods.find(prod => prod.id === selectS.value);
+            if(!p) return;
+            
+            const cfg = JSON.parse(localStorage.getItem('meli_config'));
+            const roiInput = parseFloat(document.getElementById('simRoi').value) || 0;
+
+            const totalErogacionCompra = p.neto + p.iva + p.iibb + p.iigg + p.packaging;
+            const gananciaDeseada = p.neto * (roiInput / 100);
+
+            document.getElementById('resumenCostosProducto').innerHTML = `
+                <strong>Resumen Costos de Origen:</strong><br>
+                • Inversión total de caja compra: $ ${formataARS(totalErogacionCompra)}<br>
+                • Crédito IVA: $ ${formataARS(p.iva)} | Crédito IIBB: $ ${formataARS(p.iibb)}<br>
+                • Ganancia pura buscada: <strong>$ ${formataARS(gananciaDeseada)}</strong>
+            `;
+
+            const opciones = [
+                { name: 'Sin Cuotas', tasa: cfg.t0 },
+                { name: '3 Cuotas "Sin Interés"', tasa: cfg.t3 },
+                { name: '6 Cuotas "Sin Interés"', tasa: cfg.t6 },
+                { name: '9 Cuotas "Sin Interés"', tasa: cfg.t9 },
+                { name: '12 Cuotas "Sin Interés"', tasa: cfg.t12 }
+            ];
+
+            const tbody = document.getElementById('tbodySimulacion');
+            tbody.innerHTML = '';
+
+            opciones.forEach(op => {
+                let res = calcularPrecioInverso(
+                    totalErogacionCompra, gananciaDeseada, p.comision, op.tasa, 
+                    (cfg.iva/100), (cfg.iibb/100), p.envio, cfg.limite, p.costoFijo
+                );
+
+                let pVenta = res.precio;
+                let cMeli = pVenta * (p.comision / 100);
+                let cCuota = pVenta * (op.tasa / 100);
+                let cEnvio = res.tieneEnvio ? p.envio : 0;
+
+                let ivaDeb = pVenta * (cfg.iva / 100);
+                let iibbDeb = pVenta * (cfg.iibb / 100);
+
+                let totalCargosMeliIva = cMeli + cCuota + res.fijo + cEnvio;
+                let ivaCredMeli = totalCargosMeliIva * (cfg.iva / (100 + cfg.iva));
+
+                let liqIva = ivaDeb - (p.iva + ivaCredMeli);
+                let liqIibb = iibbDeb - p.iibb;
+
+                let impNetos = Math.max(0, liqIva) + Math.max(0, liqIibb);
+                let gFinal = pVenta - cMeli - cCuota - res.fijo - cEnvio - impNetos - totalErogacionCompra;
+
+                if (liqIva < 0) gFinal += Math.abs(liqIva);
+                if (liqIibb < 0) gFinal += Math.abs(liqIibb);
+
+                let badgeColorClass = gFinal >= 0 ? 'text-green' : 'text-red';
+                let roiRealCalculado = p.neto > 0 ? ((gFinal / p.neto) * 100).toFixed(0) : 0;
+
+                tbody.innerHTML += `<tr>
+                    <td><strong>${op.name}</strong><br><span class="text-muted">Costo tasa: ${op.tasa.toLocaleString('es-AR')}%</span></td>
+                    <td><span class="price-badge">$ ${formataARS(pVenta)}</span></td>
+                    <td>$ ${formataARS(cMeli + cCuota)} ${res.fijo > 0 ? `<br><span class="text-red" style="font-size:0.72rem;">+$${formataARS(p.costoFijo)} Fijo del Prod.</span>` : ''}</td>
+                    <td>$ ${formataARS(cEnvio)} ${res.tieneEnvio ? `<br><span class="text-red" style="font-size:0.72rem;">Envío Gratis</span>` : '<br><span class="text-muted" style="font-size:0.72rem;">A cargo cliente</span>'}</td>
+                    <td>$ ${formataARS(impNetos)}<br><span class="text-muted">Neteado c/ crédito</span></td>
+                    <td>
+                        <span class="${badgeColorClass}">$ ${formataARS(gFinal)}</span><br>
+                        <span class="text-muted" style="color:${gFinal >= 0 ? 'var(--ml-green)' : 'var(--ml-red)'}; font-weight:bold;">ROI: ${roiRealCalculado}%</span>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        window.onload = function() {
+            cargarDatos();
+        };
+    </script>
+</body>
+</html>
